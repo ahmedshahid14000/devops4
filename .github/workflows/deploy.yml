@@ -1,38 +1,56 @@
-name: Deploy to EC2
+name: CI/CD for React App to EC2
+
+# Trigger the pipeline on push to the main branch
 on:
   push:
     branches:
-      - master  # or your default branch name
+      - main  # You can change this if you use another branch for deployment, e.g., 'master'
+
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
+  build:
+    runs-on: ubuntu-latest  # Use the latest Ubuntu runner
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      
-    - name: Deploy to EC2
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
-      run: |
-        # Store private key
-        echo "$PRIVATE_KEY" > private_key.pem
-        chmod 600 private_key.pem
-        
-        # First copy to home directory, then move with sudo
-        # scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
-        
-        # Move file to nginx directory with sudo and set permissions
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
-          sudo cp . .
-          npm start
-          # sudo chown nginx:nginx /var/www/html/index.html
-          # sudo chmod 644 /var/www/html/index.html
-          # sudo systemctl restart nginx
-        '
-        
-      
+      # Checkout code
+      - name: Checkout code
+        uses: actions/checkout@v2
 
+      # Set up Node.js (using version 16)
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
 
+      # Install dependencies
+      - name: Install dependencies
+        run: npm install
+
+      # Build the React app
+      - name: Build React app
+        run: npm run build
+
+      # Deploy to EC2
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # SSH Private Key stored in GitHub secrets
+          HOST: ${{ secrets.EC2_HOST }}  # EC2 Public IP (or DNS) stored in GitHub secrets
+          USER: ${{ secrets.EC2_USER }}  # EC2 Username (usually 'ubuntu' or 'ec2-user')
+        run: |
+          # Set up SSH for secure deployment
+          echo "$PRIVATE_KEY" > private-key.pem
+          chmod 600 private-key.pem
+          
+          # Copy the build folder to your EC2 instance (adjust paths if needed)
+          scp -i private-key.pem -r ./build/ $USER@$HOST:/home/$USER/app/build
+
+          # SSH into EC2 and restart Nginx (or any web server) to serve the new build
+          ssh -i private-key.pem $USER@$HOST << 'EOF'
+            # Backup existing build (optional)
+            sudo mv /home/$USER/app/build /home/$USER/app/build_backup
+
+            # Move the new build to the app directory
+            sudo mv /home/$USER/app/build /home/$USER/app/build_new
+
+            # Restart the web server (Nginx in this case)
+            sudo systemctl restart nginx
+          EOF
