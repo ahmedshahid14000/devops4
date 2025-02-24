@@ -22,7 +22,7 @@ jobs:
         chmod 600 private_key.pem
         
         # First copy to home directory, then move with sudo
-        scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
+        # scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
         
         # Move file to nginx directory with sudo and set permissions
         ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
