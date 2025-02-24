@@ -1,0 +1,38 @@
+name: Deploy to EC2
+on:
+  push:
+    branches:
+      - main  # or your default branch name
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+      
+    - name: Deploy to EC2
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        HOST: ${{ secrets.EC2_HOST }}
+        USER: ${{ secrets.EC2_USER }}
+      run: |
+        # Store private key
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # First copy to home directory, then move with sudo
+        scp -o StrictHostKeyChecking=no -i private_key.pem index.html ${USER}@${HOST}:~/
+        
+        # Move file to nginx directory with sudo and set permissions
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${USER}@${HOST} '
+          sudo mv ~/index.html /var/www/html/
+          sudo chown nginx:nginx /var/www/html/index.html
+          sudo chmod 644 /var/www/html/index.html
+          sudo systemctl restart nginx
+        '
+        
+        # Clean up
+        rm -f private_key.pem
+
+
