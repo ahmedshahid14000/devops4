@@ -52,5 +52,6 @@ jobs:
             sudo mv /home/$USER/app/build /home/$USER/app/build_new
 
             # Restart the web server (Nginx in this case)
+            #comment
             sudo systemctl restart nginx
           EOF
