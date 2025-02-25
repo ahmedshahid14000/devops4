@@ -4,7 +4,7 @@ name: CI/CD for React App to EC2
 on:
   push:
     branches:
-      - master  # You can change this if you use another branch for deployment, e.g., 'master'
+      - main  # You can change this if you use another branch for deployment, e.g., 'master'
 
 jobs:
   build:
