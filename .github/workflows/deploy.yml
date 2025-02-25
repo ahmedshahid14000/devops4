@@ -4,7 +4,7 @@ name: CI/CD for React App to EC2
 on:
   push:
     branches:
-      - master  # You can change this if you use another branch for deployment, e.g., 'master'
+      - master  # You can change this if you use another branch for deployment, e.g., 'main'
 
 jobs:
   build:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v2
 
       # Set up Node.js (using version 16)
-      - name: Set up Node.jsgit 
+      - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '16'
@@ -32,8 +32,7 @@ jobs:
       # Deploy to EC2
       - name: Deploy to EC2
         env:
-          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # SSH Private Key stored in GitHub secretsss
-        
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}  # SSH Private Key stored in GitHub secrets
           HOST: ${{ secrets.EC2_HOST }}  # EC2 Public IP (or DNS) stored in GitHub secrets
           USER: ${{ secrets.EC2_USER }}  # EC2 Username (usually 'ubuntu' or 'ec2-user')
         run: |
@@ -41,6 +40,10 @@ jobs:
           echo "$PRIVATE_KEY" > private-key.pem
           chmod 600 private-key.pem
           
+          # Add EC2 host to known_hosts to avoid 'Host key verification failed'
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+
           # Copy the build folder to your EC2 instance (adjust paths if needed)
           scp -i private-key.pem -r ./build/ $USER@$HOST:/home/$USER/app/build
 
@@ -50,9 +53,8 @@ jobs:
             sudo mv /home/$USER/app/build /home/$USER/app/build_backup
 
             # Move the new build to the app directory
-            sudo mv /home/$USER/app/build /home/$USER/app/build_new
+            sudo mv /home/$USER/app/build_new /home/$USER/app/build
 
             # Restart the web server (Nginx in this case)
-            #comment
             sudo systemctl restart nginx
           EOF
